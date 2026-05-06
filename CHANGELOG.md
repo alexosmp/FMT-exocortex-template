@@ -5,6 +5,16 @@ All notable changes to FMT-exocortex-template will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/).
 
+## [0.29.32] — 2026-05-06
+
+### Fixed — WP-294 race-guard, state-файл переживал сессию
+
+Верификатор 0.29.31: state-файл `.claude/state/wp-sync-<N>.done` создавался в шаге 3d, но нигде не очищался. На второй день sync для того же WP «тихо» пропускался (race-guard думал, что уже запускался). Симптом без диагностики.
+
+Фикс: race-guard проверяет mtime state-файла. Если моложе 8h — пропустить (та же сессия). Если старше — считать stale: `rm -f` и запустить заново. Проверка: `find .claude/state/wp-sync-<N>.done -mmin -480 2>/dev/null`.
+
+8h выбраны как граница «одна рабочая сессия / день». Без cron-очистки накопится ~10 файлов/день — пренебрежимо для FS, при следующем запуске любой stale-файл удаляется автоматически.
+
 ## [0.29.31] — 2026-05-06
 
 ### Changed — WP-294 Sync-фаза WP Gate (доводка)
