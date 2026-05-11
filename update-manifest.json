@@ -1,5 +1,5 @@
 {
-  "version": "0.29.32",
+  "version": "0.30.0",
   "description": "Манифест платформенных файлов FMT-exocortex-template. Используется update.sh для доставки обновлений.",
   "files": [
     {
@@ -483,6 +483,9 @@
       "path": "scripts/check-dirty-repos.sh"
     },
     {
+      "path": "scripts/check-script-collisions.sh"
+    },
+    {
       "path": "scripts/day-close.sh"
     },
     {
@@ -502,6 +505,12 @@
     },
     {
       "path": "scripts/migrate-to-runtime-target.sh"
+    },
+    {
+      "path": "scripts/week-draft-append.sh"
+    },
+    {
+      "path": "scripts/week-draft-init.sh"
     },
     {
       "path": "setup.sh"
