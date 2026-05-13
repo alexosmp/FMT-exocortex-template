@@ -617,9 +617,11 @@ for f in "${NEW_FILES[@]}" "${UPDATED_FILES[@]}"; do
 done
 
 # === Step 5d: Repair-pass для critical runtime files ===
-# Закрывает gap «UNCHANGED ⇒ файл на месте». Если файл из manifest отсутствует
-# в целевой локации (workspace или CLAUDE_MEMORY_DIR), копируем из FMT даже если
-# хеш совпадает с remote (UNCHANGED). Срабатывает при ручном удалении / сбое предыдущего update.
+# Закрывает два gap-а:
+#   (1) «UNCHANGED ⇒ файл отсутствует» — ручное удаление / сбой предыдущего update.
+#   (2) «UNCHANGED ⇒ файл stale» — файл есть, но hash расходится с FMT source
+#       (возникает при частичном применении update, dirty workspace, или если workspace
+#       не перезаписывал существующий файл при прошлом update).
 # Выполняется ПОСЛЕ propagation чтобы repair не дублировал работу NEW_FILES/UPDATED_FILES.
 REPAIRED=0
 while IFS='|' read -r fpath _; do
@@ -630,10 +632,17 @@ while IFS='|' read -r fpath _; do
         memory/*.md|memory/*.yaml|memory/*.yml)
             fname=$(basename "$fpath")
             [ "$fname" = "MEMORY.md" ] && continue
-            if [ -d "$CLAUDE_MEMORY_DIR" ] && [ ! -f "$CLAUDE_MEMORY_DIR/$fname" ]; then
-                cp "$SCRIPT_DIR/$fpath" "$CLAUDE_MEMORY_DIR/$fname"
-                echo "  ⟲ $fpath → memory/ (repair)"
-                REPAIRED=$((REPAIRED + 1))
+            if [ -d "$CLAUDE_MEMORY_DIR" ]; then
+                mem_dst="$CLAUDE_MEMORY_DIR/$fname"
+                if [ ! -f "$mem_dst" ]; then
+                    cp "$SCRIPT_DIR/$fpath" "$mem_dst"
+                    echo "  ⟲ $fpath → memory/ (repair)"
+                    REPAIRED=$((REPAIRED + 1))
+                elif [ "$(hash_file "$SCRIPT_DIR/$fpath")" != "$(hash_file "$mem_dst")" ]; then
+                    cp "$SCRIPT_DIR/$fpath" "$mem_dst"
+                    echo "  ⟲ $fpath → memory/ (stale repair)"
+                    REPAIRED=$((REPAIRED + 1))
+                fi
             fi
             ;;
         .claude/skills/*|.claude/hooks/*|.claude/rules/*|.claude/lib/*|.claude/config/*|.claude/detectors/*|.claude/scripts/*|.claude/agents/*|.claude/settings.json)
@@ -643,6 +652,11 @@ while IFS='|' read -r fpath _; do
                 cp "$SCRIPT_DIR/$fpath" "$dst"
                 case "$fpath" in *.sh) chmod +x "$dst" ;; esac
                 echo "  ⟲ $fpath → workspace (repair)"
+                REPAIRED=$((REPAIRED + 1))
+            elif [ "$(hash_file "$SCRIPT_DIR/$fpath")" != "$(hash_file "$dst")" ]; then
+                cp "$SCRIPT_DIR/$fpath" "$dst"
+                case "$fpath" in *.sh) chmod +x "$dst" ;; esac
+                echo "  ⟲ $fpath → workspace (stale repair)"
                 REPAIRED=$((REPAIRED + 1))
             fi
             ;;
