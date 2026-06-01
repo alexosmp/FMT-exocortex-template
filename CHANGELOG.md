@@ -5,6 +5,17 @@ All notable changes to FMT-exocortex-template will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/).
 
+## [0.35.2] — 2026-06-01
+
+### Fixed (hotfix по verify-агенту 0.35.1)
+
+- `memory/feedback_response_clarity_for_pilot.md` frontmatter: удалена утечка `originSessionId` (локальный id Claude Code-сессии, не часть схемы memory-lifecycle), `description` синхронизирован с телом (`10 правил` → `11 правил A1-A11`).
+- `CLAUDE.md §9 «Режим на пальцах (S-37)»`: в bullet-list правил режима добавлены метки `(A1)`...`(A11)` symmetric с `AGENTS.md` и `memory/feedback_response_clarity_for_pilot.md` — устранён drift между тремя источниками.
+
+### Notes
+
+- Источник правок — verify-агент (cold-context Sonnet) и research-агент (general-purpose с WebSearch+WebFetch на 8 источников, включая Jaroslawicz et al. 2025 IFScale). Полные отчёты — в `WP-388-agent-communication-style.md` авторского governance-репо.
+
 ## [0.35.1] — 2026-06-01
 
 ### Added

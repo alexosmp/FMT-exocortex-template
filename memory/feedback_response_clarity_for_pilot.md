@@ -1,6 +1,6 @@
 ---
 name: feedback_response_clarity_for_pilot
-description: 12 паттернов засорения ответов агентов + 10 правил «писать в режиме читателя» + детектор канала; источник — peer-сессия 2026-06-01-27
+description: 12 паттернов засорения ответов агентов + 11 правил A1-A11 «писать в режиме читателя» + детектор канала; источник — peer-сессия 2026-06-01-27
 metadata: 
   node_type: memory
   type: feedback
@@ -13,7 +13,6 @@ metadata:
   valid_from: 2026-06-01
   owner: user
   schema_version: 1
-  originSessionId: 4bd04e22-211c-4d1c-bf46-1585e405e4f7
 ---
 
 # Правила «писать для пилота, не для CI-инспектора»
