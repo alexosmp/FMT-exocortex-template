@@ -12,6 +12,36 @@ Agent Dashboard — статус всех агентов IWE через Aisystan
   agent-dashboard.py --json                # сырой JSON (для скриптов)
   agent-dashboard.py --help                # справка
 
+Формат API v2.0 (agent_status_list):
+  {
+    "version": "2.0",
+    "mode": "personal" | "team",
+    "repo": "org/repo-name" | null,
+    "agents": [
+      {
+        "agent": "claude-code",
+        "pilot": "<user_id>",        # только в командном режиме (UUID)
+        "pilot_name": "<display>",   # только если getUserNames предоставлен
+        "sessions": [
+          { "session_id": "...", "status": "working|idle|...",
+            "task": "...", "files": [...], "updated_at": "<ISO-8601>",
+            "stale": false }
+        ],
+        "summary": { "working": N, "total": M }
+      }
+    ]
+  }
+
+Нормализация путей (normalize_file_path):
+  Пути из поля `files` конвертируются в relpath от IWE_ROOT (~/IWE).
+  POSIX-разделители (/) на всех платформах.
+  Пути вне IWE_ROOT возвращаются нормализованными (не basename).
+  IWE_ROOT берётся из IWE_DIR env или ~/IWE.
+
+Stale-порог (STALE_THRESHOLD):
+  900 секунд (15 мин) — агент считается устаревшим при status != idle.
+  >15 мин — жёлтый [устарел], >2ч — красный [вероятно зависла].
+
 Требования:
   - Python 3.9+
   - curl (для обновления токена)
@@ -260,13 +290,21 @@ IWE_ROOT = os.path.normpath(os.path.expanduser(os.environ.get("IWE_DIR", "~/IWE"
 
 
 def normalize_file_path(p: str) -> str:
-    """Нормализуй путь к relative от IWE_ROOT с POSIX-разделителями."""
+    """Нормализуй путь к relative от IWE_ROOT с POSIX-разделителями.
+
+    Пути вне IWE_ROOT возвращаются как абсолютные нормализованные пути (не basename,
+    не относительный ../../.. — он скрывает реальное расположение файла).
+    """
     p = os.path.normpath(os.path.expanduser(p))
     try:
         rel = os.path.relpath(p, IWE_ROOT)
+        # На Unix relpath всегда успешен, даже вне IWE_ROOT (даёт ../../../...)
+        # Если путь выходит за пределы IWE_ROOT — возвращаем абсолютный путь
+        if rel.startswith(".."):
+            return p.replace(os.sep, "/")
         return rel.replace(os.sep, "/")
     except ValueError:
-        # Разные диски (Windows) или путь вне IWE_ROOT → вернуть нормализованный путь
+        # Разные диски (Windows) → вернуть нормализованный путь
         return p.replace(os.sep, "/")
 
 
