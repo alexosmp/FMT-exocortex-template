@@ -165,7 +165,9 @@ fi
 STAGED_TEMPLATE=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null \
     | grep -E '\.(md|sh|py|json|plist|yaml)$' || true)
 if [ -n "$STAGED_TEMPLATE" ] && [ -x "setup/validate-template.sh" ]; then
-    if ! bash setup/validate-template.sh >/tmp/iwe-validate.$$ 2>&1; then
+    # --mode=staged: проверяет только staged файлы. Предотвращает ложные блокировки
+    # от unstaged WIP параллельных агентов (мультиагентная среда IWE). CI использует pristine.
+    if ! bash setup/validate-template.sh --mode=staged >/tmp/iwe-validate.$$ 2>&1; then
         echo "TEMPLATE-VALIDATE: FAIL"
         cat /tmp/iwe-validate.$$
         rm -f /tmp/iwe-validate.$$
