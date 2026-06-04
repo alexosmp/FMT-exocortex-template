@@ -1,29 +1,30 @@
 #!/usr/bin/env python3
 """
-Синхронизирует communication-style слои с downstream-файлами.
+Sync communication-style layers to downstream files.
 
-Трёхслойная архитектура (WP-388 Ф8, АрхГейт 3 июня):
-  L0 (платформа) — PACK-digital-platform/.../DP.SC.050-communication-style-base.md  → все downstream
-  L1 (автор)     — DS-my-strategy/memory/communication-style-author.md              → авторские downstream
-  L2 (пользователь) — у каждого свой, не синхронизируется скриптом
+Three-layer architecture (WP-388 F8, ArchGate 3 June):
+  L0 (platform) - PACK-digital-platform/.../communication-style-base.md -> all downstream
+  L1 (author)   - author config (--author-style)                        -> author downstream
+  L2 (user)     - per-user, not managed by this script
 
-Источник истины: PACK-digital-platform (по решению АрхГейта).
-FMT-файл, корневые CLAUDE.md/AGENTS.md, бот, шлюз, skill Гермеса = проекции.
+Source of truth: PACK-digital-platform (ArchGate decision).
+Downstream targets loaded from scripts/sync-communication-style.yaml (author-local, gitignored).
+See scripts/sync-communication-style.yaml.example for the template.
 
-Запуск:
-    # Только L0 (все downstream)
-    python3 scripts/sync-communication-style.py
+Usage:
+    # L0 only (all downstream from yaml config)
+    python3 scripts/sync-communication-style.py --iwe-root ~/IWE
 
-    # L0 + L1 (авторские downstream)
-    python3 scripts/sync-communication-style.py \\
-        --author-style ~/IWE/DS-my-strategy/memory/communication-style-author.md
+    # L0 + L1 (author downstream)
+    python3 scripts/sync-communication-style.py --iwe-root ~/IWE \\
+        --author-style path/to/communication-style-author.md
 
-    # Проверка расхождений (Week Close)
-    python3 scripts/sync-communication-style.py --check
+    # Check drift (Week Close)
+    python3 scripts/sync-communication-style.py --iwe-root ~/IWE --check
 
     # Hermes memory export
-    python3 scripts/sync-communication-style.py \\
-        --author-style ~/IWE/DS-my-strategy/memory/communication-style-author.md \\
+    python3 scripts/sync-communication-style.py --iwe-root ~/IWE \\
+        --author-style path/to/communication-style-author.md \\
         --hermes-export /tmp/hermes-style-rules.txt
 """
 
@@ -33,39 +34,61 @@ import re
 import sys
 from pathlib import Path
 
-# Источник истины L0 (Pack) - относительно IWE root
-PACK_BASE_FILE = Path("PACK-digital-platform/pack/digital-platform/08-service-clauses/DP.SC.050-communication-style-base.md")
+try:
+    import yaml
+except ImportError:
+    print("ERROR: PyYAML required. Install: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
 
-# Fallback: FMT-копия (если Pack недоступен)
+# L0 source of truth (Pack) - relative to IWE root
+PACK_BASE_FILE = Path("PACK-digital-platform/pack/digital-platform/02-domain-entities/communication-style-base.md")
+
+# Fallback: FMT copy (if Pack unavailable)
 FMT_BASE_FILE = Path("FMT-exocortex-template/memory/communication-style-base.md")
 
-# Маркеры для markdown-файлов
+# Markers for markdown files
 MD_START = "<!-- COMMUNICATION-STYLE-BASE-START -->"
 MD_END = "<!-- COMMUNICATION-STYLE-BASE-END -->"
 
-# Маркеры для JS/TS файлов
+# Markers for JS/TS files
 JS_START = "// COMMUNICATION-STYLE-BASE-START"
 JS_END = "// COMMUNICATION-STYLE-BASE-END"
 
-# Все downstream-файлы (относительно IWE root).
-# type: "l0" = только база, "l0+l1" = база + авторский слой
-# ftype: "markdown" | "js" | "copy" (полная копия без маркеров)
-DOWNSTREAM_FILES = [
-    # FMT-шаблон (проекция L0)
-    ("FMT-exocortex-template/AGENTS.md", "markdown", "l0"),
-    ("FMT-exocortex-template/CLAUDE.md", "markdown", "l0"),
-    # Корневые файлы автора (L0+L1)
-    ("DS-my-strategy/exocortex/AGENTS.md", "markdown", "l0+l1"),
-    ("DS-my-strategy/exocortex/CLAUDE.md", "markdown", "l0+l1"),
-    # Бот Aisystant
-    ("DS-MCP/aisystant-bot/src/standard_claude.md", "markdown", "l0"),
-    # Gateway MCP (браузерный Claude.ai)
-    ("DS-MCP/gateway-mcp/src/index.ts", "js", "l0"),
-]
 
+def load_downstream_files(script_dir: Path) -> list:
+    """Load downstream targets from yaml config (author-local, gitignored)."""
+    config_path = script_dir / "sync-communication-style.yaml"
+    if not config_path.exists():
+        example_path = script_dir / "sync-communication-style.yaml.example"
+        if example_path.exists():
+            print(f"WARNING: {config_path.name} not found.", file=sys.stderr)
+            print(f"  Copy from .yaml.example and fill in your paths:", file=sys.stderr)
+            print(f"  cp {example_path} {config_path}", file=sys.stderr)
+            sys.exit(1)
+        print(f"ERROR: No config at {config_path} or {example_path}", file=sys.stderr)
+        sys.exit(1)
+
+    with open(config_path, encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+
+    if not cfg or "downstream" not in cfg:
+        print(f"ERROR: {config_path} must have a 'downstream' key", file=sys.stderr)
+        sys.exit(1)
+
+    result = []
+    for entry in cfg["downstream"]:
+        p = entry.get("path", "")
+        ftype = entry.get("type", "markdown")
+        layer = entry.get("layer", "l0")
+        if "{{" in p:
+            print(f"  SKIP  {p} (unresolved placeholder)")
+            continue
+        result.append((p, ftype, layer))
+
+    return result
 
 def strip_frontmatter(text: str) -> str:
-    """Убирает YAML frontmatter."""
+    """Strip YAML frontmatter."""
     if text.startswith("---"):
         parts = text.split("---", 2)
         if len(parts) >= 3:
@@ -74,7 +97,7 @@ def strip_frontmatter(text: str) -> str:
 
 
 def read_base_content(iwe_root: Path) -> str:
-    """Читает L0 из Pack (SoT). Fallback: FMT-копия."""
+    """Read L0 from Pack (SoT). Fallback: FMT copy."""
     pack_path = iwe_root / PACK_BASE_FILE
     if pack_path.exists():
         print(f"Source: Pack (SoT) - {pack_path}")
@@ -90,7 +113,7 @@ def read_base_content(iwe_root: Path) -> str:
 
 
 def read_author_content(author_path: str) -> str:
-    """Читает L1 communication-style-author.md."""
+    """Read L1 communication-style-author.md."""
     path = Path(author_path)
     if not path.exists():
         print(f"WARNING: L1 author file not found: {path}, skipping L1 merge")
@@ -99,7 +122,7 @@ def read_author_content(author_path: str) -> str:
 
 
 def merge_l0_l1(l0: str, l1: str) -> str:
-    """Объединяет L0 + L1 в один блок для авторских downstream."""
+    """Merge L0 + L1 into single block for author downstream."""
     if not l1:
         return l0
     return f"""{l0}
@@ -112,15 +135,15 @@ def merge_l0_l1(l0: str, l1: str) -> str:
 
 
 def generate_hermes_export(l0: str, l1: str, output_path: str) -> None:
-    """Генерирует компактный текст правил для Hermes memory/skill."""
+    """Generate compact rules text for Hermes memory/skill."""
     merged = merge_l0_l1(l0, l1)
 
-    # Извлекаем нумерованные правила (строки начинающиеся с цифры и точки)
+    # Extract numbered rules
     rules = []
     for line in merged.split("\n"):
         line = line.strip()
         if re.match(r"^\d+\.\s+\*\*", line) or re.match(r"^###\s+R\d+", line):
-            # Убираем markdown bold
+            # Strip markdown bold
             clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)
             rules.append(clean)
 
@@ -135,7 +158,7 @@ def generate_hermes_export(l0: str, l1: str, output_path: str) -> None:
 
 
 def update_markdown(path: Path, content: str) -> bool:
-    """Обновляет markdown-файл между MD маркерами."""
+    """Update markdown file between MD markers."""
     if not path.exists():
         print(f"WARNING: file not found: {path}")
         return False
@@ -155,7 +178,7 @@ def update_markdown(path: Path, content: str) -> bool:
 
 
 def update_js(path: Path, content: str) -> bool:
-    """Обновляет JS/TS файл между JS маркерами."""
+    """Update JS/TS file between JS markers."""
     if not path.exists():
         print(f"WARNING: file not found: {path}")
         return False
@@ -176,7 +199,7 @@ def update_js(path: Path, content: str) -> bool:
 
 
 def extract_between_markers(text: str, start_marker: str, end_marker: str) -> str:
-    """Извлекает контент между маркерами."""
+    """Extract content between markers."""
     pattern = f"{re.escape(start_marker)}\\n*(.+?)\\n*{re.escape(end_marker)}"
     m = re.search(pattern, text, re.DOTALL)
     if m:
@@ -184,15 +207,15 @@ def extract_between_markers(text: str, start_marker: str, end_marker: str) -> st
     return ""
 
 
-def check_drift(iwe_root: Path, l0_content: str) -> int:
-    """Проверяет расхождение копий с SoT. Возвращает число drift'ов."""
+def check_drift(iwe_root: Path, l0_content: str, downstream_files: list) -> int:
+    """Check downstream copies against SoT. Returns drift count."""
     l0_hash = hashlib.md5(l0_content.encode()).hexdigest()
     drift_count = 0
 
     print(f"\nSoT md5: {l0_hash}")
-    print(f"Checking {len(DOWNSTREAM_FILES)} downstream files...\n")
+    print(f"Checking {len(downstream_files)} downstream files...\n")
 
-    for rel_path, ftype, layer_mode in DOWNSTREAM_FILES:
+    for rel_path, ftype, layer_mode in downstream_files:
         path = iwe_root / rel_path
         if not path.exists():
             print(f"  SKIP  {rel_path} (not found)")
@@ -212,13 +235,21 @@ def check_drift(iwe_root: Path, l0_content: str) -> int:
             drift_count += 1
             continue
 
-        # Для l0+l1 файлов, берём только L0 часть (до "<!-- L1:")
+        # For l0+l1 files, take only L0 part (before "<!-- L1:")
         if layer_mode == "l0+l1" and "<!-- L1:" in embedded:
             embedded = embedded.split("<!-- L1:")[0].strip()
 
+        # JS target stores escaped content (see update_js) - compare with escaped
+        # reference, otherwise eternal DRIFT (M4, WP-388 F8 review).
+        if ftype == "js":
+            expected = l0_content.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$")
+            expected_hash = hashlib.md5(expected.encode()).hexdigest()
+        else:
+            expected_hash = l0_hash
+
         embedded_hash = hashlib.md5(embedded.encode()).hexdigest()
 
-        if embedded_hash == l0_hash:
+        if embedded_hash == expected_hash:
             print(f"  OK    {rel_path}")
         else:
             print(f"  DRIFT {rel_path} (md5: {embedded_hash})")
@@ -252,32 +283,34 @@ def main():
     args = parser.parse_args()
 
     iwe_root = Path(args.iwe_root)
+    script_dir = iwe_root / "FMT-exocortex-template" / "scripts"
+    downstream_files = load_downstream_files(script_dir)
     l0 = read_base_content(iwe_root)
     l1 = read_author_content(args.author_style) if args.author_style else ""
 
-    # Режим проверки drift
+    # Drift check mode
     if args.check:
-        drift_count = check_drift(iwe_root, l0)
+        drift_count = check_drift(iwe_root, l0, downstream_files)
         if drift_count == 0:
             print(f"\nAll copies in sync.")
         else:
             print(f"\n{drift_count} drift(s) found. Run without --check to fix.")
         return 0 if drift_count == 0 else 1
 
-    # Режим синхронизации
+    # Sync mode
     ok_count = 0
     skip_count = 0
 
     print(f"Syncing L0 ({len(l0)} chars)" + (f" + L1 ({len(l1)} chars)" if l1 else "") + "...")
 
-    for rel_path, ftype, layer_mode in DOWNSTREAM_FILES:
+    for rel_path, ftype, layer_mode in downstream_files:
         path = iwe_root / rel_path
         if not path.exists():
             print(f"SKIP {rel_path} (not found)")
             skip_count += 1
             continue
 
-        # Выбираем контент в зависимости от слоя
+        # Select content based on layer
         if layer_mode == "l0+l1" and l1:
             content = merge_l0_l1(l0, l1)
         else:
