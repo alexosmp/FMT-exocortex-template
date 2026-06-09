@@ -801,9 +801,8 @@ else
         echo "  - Sunday night: week review"
     fi
     echo ""
-    echo "Developer guide (T4+):"
-    echo "  cat docs/developer-guide.md"
-    echo "  Template task card: docs/templates/conveyor-card.md"
+    echo "Developer onboarding (T4+) — single entry point:"
+    echo "  cat docs/conveyor-onboarding.md"
     echo ""
     echo "Update from upstream:"
     echo "  cd $TEMPLATE_DIR && bash update.sh"

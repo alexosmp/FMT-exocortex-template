@@ -3,7 +3,7 @@ card_type: conveyor-task
 wp: WP-NNN
 name: краткое-имя-задачи
 tier: T4+
-verification_class: V3
+verification_class: closed-loop   # trivial | closed-loop | open-loop | problem-framing
 stations: [Постановка, Открытие, Проектирование, Работа, Проверка, Закрытие]
 double_exit:
   code: "что появится в коде / артефакте"
@@ -40,7 +40,7 @@ tags: [platform/scripts]
    - [ ] критерий 1
    - [ ] критерий 2
    - [ ] capture добавлен
-6. **Закрытие** — PR, merge (пилот / Ильшат), обновление реестра.
+6. **Закрытие** — PR, merge (ведущий разработчик TD1+TA4 / пилот), обновление реестра.
 
 ## Критерий приёмки
 
