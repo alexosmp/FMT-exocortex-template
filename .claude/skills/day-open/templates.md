@@ -1,3 +1,5 @@
+> Используется в: `.claude/skills/day-open/SKILL.md` (шаги 7a, 7d).
+
 ## Шаблон DayPlan
 
 > **Стиль:** collapsible, без `---`, `<b>` в summary. Приоритет = светофор (🔴🟡🟢). Результат = краткое название из Strategy.md.

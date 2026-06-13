@@ -176,7 +176,7 @@ Scout report. Не проревьюен → «Требует внимания».
 ### 7. Запись
 
 > ⚠️ **Перед шагами 7a и 7d:** прочитать `.claude/skills/day-open/templates.md` через Read.
-> Если файл не найден (ENOENT) — прервать с ошибкой: «templates.md отсутствует. Выполни git pull или reinstall IWE.» Не продолжать без шаблонов.
+> Если файл не найден — сообщить пилоту: «templates.md отсутствует в `.claude/skills/day-open/`. Установка IWE неполна — выполни `git pull` в FMT-exocortex-template или переустанови через setup.sh.» Не продолжать без шаблонов.
 
 **7a.** Записать DayPlan: `<governance-repo>/current/DayPlan YYYY-MM-DD.md` по шаблону «Шаблон DayPlan» из `.claude/skills/day-open/templates.md`. Предыдущий → `archive/day-plans/`.
 **7a2.** Записать журнал сессии (WP-196 Ф11 п1): `<governance-repo>/sessions/YYYY-MM-DD.md` со shapкой:
