@@ -63,9 +63,9 @@ import sys, yaml
 catalog, ram, mode = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 with open(catalog, encoding="utf-8") as f:
     data = yaml.safe_load(f)
-fit = [c for c in data.get("candidates", []) if c.get("min_ram_gb", 1e9) <= ram]
+fit = [c for c in data.get("models", []) if c.get("min_ram_gb", 1e9) <= ram]
 if not fit:
-    sys.exit("нет модели, влезающей в память")
+    sys.exit(f"нет модели под {ram} GB в каталоге (ключ models пуст или min_ram_gb выше)")
 if mode == "max":
     chosen = max(fit, key=lambda c: c.get("params_b", 0))         # тяжёлый из влезающих
 else:

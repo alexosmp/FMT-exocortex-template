@@ -130,6 +130,7 @@ NEW_DESCS=()
 UPDATED_FILES=()
 UPDATED_LINES=()
 UNCHANGED=0
+CLAUDE_CONFLICTS=0  # unresolved CLAUDE.md merge conflict counter (WP-7)
 
 # Count total files for progress display
 TOTAL_FILES=$(python3 -c "
@@ -146,7 +147,7 @@ while IFS='|' read -r fpath fdesc; do
     # Protected user files (issue #154): never overwrite if they already exist locally.
     # The "Не затрагиваются" list below is cosmetic; this is the actual skip-if-exists guard.
     case "$fpath" in
-        params.yaml|memory/MEMORY.md|.claude/settings.local.json)
+        params.yaml|memory/MEMORY.md|.claude/settings.local.json|sessions/00-index.md)
             if [ -f "$SCRIPT_DIR/$fpath" ]; then
                 UNCHANGED=$((UNCHANGED + 1))
                 continue
@@ -271,6 +272,7 @@ echo "  ✓ extensions/ (ваши расширения протоколов)"
 echo "  ✓ params.yaml (ваши параметры)"
 echo "  ✓ .secrets/ (ключи)"
 echo "  ✓ .claude/settings.local.json (permissions)"
+echo "  ✓ sessions/00-index.md (журнал peer-сессий)"
 echo "  ✓ personal/ (ваши файлы)"
 echo "  ✓ DS-strategy/ (ваше планирование)"
 echo ""
@@ -337,6 +339,7 @@ for f in "${UPDATED_FILES[@]}"; do
                     # Conflicts detected — save merged file with markers
                     cp "$TMPDIR_UPDATE/claude-merged.md" "$CURRENT_FILE"
                     cp "$NEW_FILE" "$BASE_FILE"
+                    CLAUDE_CONFLICTS=$((CLAUDE_CONFLICTS + CONFLICT_COUNT))
                     echo "  ~ $f (3-way merge, $CONFLICT_COUNT конфликтов — разрешите вручную)"
                     echo "    Конфликты обозначены <<<<<<< / ======= / >>>>>>>"
                 else
@@ -368,6 +371,15 @@ for f in "${UPDATED_FILES[@]}"; do
     fi
     APPLIED=$((APPLIED + 1))
 done
+
+# Hard-fail if CLAUDE.md still has conflict markers — skip propagation and commit.
+if [ "$CLAUDE_CONFLICTS" -gt 0 ]; then
+    echo ""
+    echo "ОШИБКА: CLAUDE.md содержит неразрешённые конфликты слияния."
+    echo "  Конфликты обозначены <<<<<<< / ======= / >>>>>>>"
+    echo "  Разрешите их вручную в $SCRIPT_DIR/CLAUDE.md и перезапустите update.sh."
+    exit 1
+fi
 
 # Remove deprecated files
 for i in "${!DEPRECATED_FOUND[@]}"; do
@@ -593,8 +605,14 @@ for f in "${NEW_FILES[@]}" "${UPDATED_FILES[@]}"; do
                 WS_CONFLICTS=$(grep -c '^<<<<<<<' "$TMPDIR_UPDATE/ws-claude-merged.md" 2>/dev/null || true); WS_CONFLICTS=${WS_CONFLICTS:-0}
                 cp "$TMPDIR_UPDATE/ws-claude-merged.md" "$WS_CURRENT"
                 cp "$WS_NEW" "$WS_BASE"
+                CLAUDE_CONFLICTS=$((CLAUDE_CONFLICTS + WS_CONFLICTS))
                 if [ "$WS_CONFLICTS" -gt 0 ]; then
-                    echo "  ✓ $WS_CURRENT обновлён (3-way merge, $WS_CONFLICTS конфликтов)"
+                    echo "  ~ $WS_CURRENT ($WS_CONFLICTS конфликтов — разрешите вручную)"
+                    echo "    Конфликты обозначены <<<<<<< / ======= / >>>>>>>"
+                    echo ""
+                    echo "ОШИБКА: CLAUDE.md содержит неразрешённые конфликты слияния."
+                    echo "  Разрешите их вручную в $WS_CURRENT и перезапустите update.sh."
+                    exit 1
                 else
                     echo "  ✓ $WS_CURRENT обновлён (3-way merge)"
                 fi
@@ -647,7 +665,7 @@ fi
 # Propagate skills, hooks, rules, lib, config, detectors to workspace if changed.
 # lib/config/detectors — runtime dependencies капчер-шины (capture-bus.sh) и детекторов.
 for f in "${NEW_FILES[@]}" "${UPDATED_FILES[@]}"; do
-    case "$f" in .claude/skills/*|.claude/hooks/*|.claude/rules/*|.claude/lib/*|.claude/config/*|.claude/detectors/*|.claude/scripts/*|.claude/agents/*|.claude/settings.json)
+    case "$f" in .claude/skills/*|.claude/hooks/*|.claude/rules/*|.claude/lib/*|.claude/config/*|.claude/detectors/*|.claude/scripts/*|.claude/agents/*|.claude/styles/*|.claude/settings.json)
         src="$SCRIPT_DIR/$f"
         dst="$WORKSPACE_DIR/$f"
         mkdir -p "$(dirname "$dst")"
@@ -688,7 +706,7 @@ while IFS='|' read -r fpath _; do
                 fi
             fi
             ;;
-        .claude/skills/*|.claude/hooks/*|.claude/rules/*|.claude/lib/*|.claude/config/*|.claude/detectors/*|.claude/scripts/*|.claude/agents/*|.claude/settings.json)
+        .claude/skills/*|.claude/hooks/*|.claude/rules/*|.claude/lib/*|.claude/config/*|.claude/detectors/*|.claude/scripts/*|.claude/agents/*|.claude/styles/*|.claude/settings.json)
             dst="$WORKSPACE_DIR/$fpath"
             if [ ! -f "$dst" ]; then
                 mkdir -p "$(dirname "$dst")"

@@ -24,7 +24,6 @@ SKIP_PATTERNS=(
     ".DS_Store"
     "generate-manifest.sh"
     "update-manifest.json"
-    "setup/"
     "seed/"
     "templates/"
 )
@@ -74,6 +73,12 @@ while IFS= read -r rel; do
     [[ "$(basename "$rel")" == ".gitkeep" ]] && skip=true
     $skip && continue
 
+    # setup/ contains install-time scripts; skip all except validate-template.sh,
+    # which is referenced by .githooks/pre-commit and update.sh after delivery.
+    if [[ "$rel" == setup/* && "$rel" != "setup/validate-template.sh" ]]; then
+        continue
+    fi
+
     # Проверяем excluded_paths (dev-only)
     is_excluded=false
     for pattern in "${EXCLUDED_PATTERNS[@]}"; do
@@ -116,10 +121,8 @@ print(json.dumps(data.get('deprecated_files', []), ensure_ascii=False))
 ")
 fi
 
-# Пишем временные JSON для передачи в Python
 TMPDIR=$(mktemp -d)
-
-# Через printf записываем построчно и читаем в Python
+# Через printf: построчная запись без bash-array-interpolation внутри строки
 printf '%s\n' "${FILES[@]}" > "$TMPDIR/files.txt"
 printf '%s\n' "${EXCLUDED_PATHS[@]}" > "$TMPDIR/excluded.txt"
 

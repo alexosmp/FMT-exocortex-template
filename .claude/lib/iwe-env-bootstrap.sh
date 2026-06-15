@@ -21,11 +21,11 @@ set -u
 
 if [ -z "${WORKSPACE_DIR:-}" ]; then
   # Try to infer from script location
-  # (Script is typically at $WORKSPACE_DIR/FMT-exocortex/scripts/*)
+  # (Script is typically at $WORKSPACE_DIR/FMT-exocortex-template/scripts/*)
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   
-  # Check if we're in a FMT-exocortex/scripts directory
-  if [[ "$SCRIPT_DIR" =~ /FMT-exocortex/scripts ]]; then
+  # Check if we're in a FMT-exocortex-template/scripts directory
+  if [[ "$SCRIPT_DIR" =~ /FMT-exocortex-template/scripts ]]; then
     WORKSPACE_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
   elif [[ "$SCRIPT_DIR" =~ /\.claude/ ]]; then
     # We're in .claude/hooks, .claude/lib, .claude/detectors, or .claude/skills
@@ -38,7 +38,7 @@ if [ -z "${WORKSPACE_DIR:-}" ]; then
     echo "ERROR [iwe-env-bootstrap]: Unable to infer WORKSPACE_DIR" >&2
     echo "  Script location: $SCRIPT_DIR" >&2
     echo "  Expected locations:" >&2
-    echo "    - $WORKSPACE_DIR/FMT-exocortex/scripts/..." >&2
+    echo "    - $WORKSPACE_DIR/FMT-exocortex-template/scripts/..." >&2
     echo "    - $WORKSPACE_DIR/.claude/{lib,detectors,hooks,skills}/..." >&2
     echo "    - $WORKSPACE_DIR/.iwe-runtime/..." >&2
     echo "  Solution: Set WORKSPACE_DIR explicitly or source from correct location" >&2
@@ -52,18 +52,31 @@ if [ -n "${HOME:-}" ]; then
 fi
 
 # ============================================================================
-# DERIVED VARIABLES (produced from WORKSPACE_DIR)
+# SOURCE OF TRUTH: .exocortex.env (single config — values + secrets)
+# ============================================================================
+# Once WORKSPACE_DIR is known, load the user config. Values defined here win
+# over derived defaults below. This is the single env source for all scripts —
+# no inline ". $IWE_ROOT/.exocortex.env" snippets elsewhere.
+if [ -f "$WORKSPACE_DIR/.exocortex.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . "$WORKSPACE_DIR/.exocortex.env"
+  set +a
+fi
+
+# ============================================================================
+# DERIVED VARIABLES (fallbacks — .exocortex.env values take precedence)
 # ============================================================================
 
 # Legacy variable for backward compatibility
-export IWE_ROOT="$WORKSPACE_DIR"
+export IWE_ROOT="${IWE_ROOT:-$WORKSPACE_DIR}"
 
 # Platform locations
 export IWE_GOVERNANCE_REPO="${IWE_GOVERNANCE_REPO:-DS-strategy}"
-export IWE_DS_MY_STRATEGY="${WORKSPACE_DIR}/${IWE_GOVERNANCE_REPO}"
-export IWE_TEMPLATE="${WORKSPACE_DIR}/FMT-exocortex"
-export IWE_RUNTIME="${WORKSPACE_DIR}/.iwe-runtime"
-export IWE_SCRIPTS="${IWE_SCRIPTS:-${WORKSPACE_DIR}/FMT-exocortex/scripts}"
+export IWE_DS_MY_STRATEGY="${IWE_DS_MY_STRATEGY:-${WORKSPACE_DIR}/${IWE_GOVERNANCE_REPO}}"
+export IWE_TEMPLATE="${IWE_TEMPLATE:-${WORKSPACE_DIR}/FMT-exocortex-template}"
+export IWE_RUNTIME="${IWE_RUNTIME:-${WORKSPACE_DIR}/.iwe-runtime}"
+export IWE_SCRIPTS="${IWE_SCRIPTS:-${WORKSPACE_DIR}/FMT-exocortex-template/scripts}"
 
 # Export to child processes
 export WORKSPACE_DIR

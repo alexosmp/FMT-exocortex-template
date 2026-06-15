@@ -23,7 +23,12 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 
 
-## [Unreleased] — обновлено 2026-06-12
+
+
+
+
+
+## [Unreleased] — обновлено 2026-06-15
 
 ### Added
 
@@ -32,6 +37,14 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - `c718131` feat(linux): OS detection in bootstrap + iCloud N/A on Linux (#18)
 - `bd43035` feat: token optimization — lazy-load roles, distinctions, peer session modes
 - `7f3ceba` feat(setup): авторизация MCP по тирам — T3/T4 CLI, T1-T2 OAuth
+- `53cd985` feat(day-open): add ТВС labeling step to skill template (§6b2)
+- `36febfd` feat(strategy): модель ТВС в шаблон (стратегирование + ОРЗ)
+- `673474d` feat(WP-388): проекция базы стиля — 4 новых элемента регистра (зеркало L0)
+- `dd117c5` feat(styles): WP-412 Ф11 — дисциплина языковых стилей в шаблон IWE
+- `83434ea` feat: promote pull-on-touch.sh — детерминированный Pull-on-Touch (CLAUDE.md §2 п.5)
+- `1f0eba6` feat(linux): cross-platform portability — env-bootstrap + systemd + OS-aware (clean integration of #179/#181)
+- `6ef52a7` feat(hooks): destructive-guard + check-trash (focused, extracted from #176)
+- `213065e` feat(day-open): smoke-tests integration — шаг 5 SKILL больше не PENDING (bug-2026-06-12)
 - `ba94993` feat(WP-7/DOA1): осознанная синхронизация day-open-scaffold.sh
 - `47ec08b` feat: model lifecycle (analysis/testing/active/archived) for local-llm stack (РП404 Ф2)
 - `0ce2cda` feat: promote local-llm stack to template (РП404 Ф3)
@@ -94,13 +107,20 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - `6be164d` feat(hindsight): WP-337/А.13 FMT template — docker-compose, start, launchd, docs
 - `43e8268` feat(WP-377): promote pack-creator + org-dev + spf-guard
 - `f47bf49` feat(WP-348): promote apply-captures defer_until invariant to L1
-- `bc5686f` feat(L1): B-005 reliability обхода Backlog и pending-фаз
-- `fbc5585` feat(L1): promote DP.D.052 v2 формулировок из peer-сессии 2026-05-31-11
 
 ### Changed
 
 - `d192be9` Merge remote-tracking branch 'upstream/main'
 - `4622da9` Merge pull request #6 from TriplEight/wp-6-linux-portability-v2
+- `6c8a4cd` docs(WP-362 Ф8.1): developer/README — тиры T1-T4 → T0-T4 (консистентность с каноном)
+- `6fdb1b0` docs(WP-362): Ф8 — FMT/docs self-contained онбординг
+- `8b5d570` refactor(day-open+manifest): SHLC1 dead code + DOPD1 lazy templates
+- `3922f45` refactor(COL-06): rename communication style levels L0/L1/L2 → S0/S1/S2
+- `5b617a9` docs: #171 правки гайда для внешнего контрибьютора + #177 §9 реальный планировщик (#189)
+- `8b982d1` Merge pull request #186 from TserenTserenov/chore/credit-denis-linux
+- `da65556` docs(changelog): credit @TriplEight for Linux portability (#179/#181) + safety hooks (#176)
+- `5ca5e7b` Merge pull request #183 from TserenTserenov/feat/destructive-guard-focused
+- `4f4c232` Merge pull request #184 from TserenTserenov/feat/linux-portability-clean
 - `44f4261` chore(fpf): обновление fpf-reference.md до commit 093d30e
 - `cf9d198` docs(conveyor): update README links after guide.md -> developer-guide.md
 - `62b36df` docs(conveyor): rename guide.md -> developer-guide.md
@@ -140,6 +160,17 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - `9d2f022` fix(manifest): register 4 new lazy-load files from PR #164/#166
 - `9e23509` fix: typo in role-prefixes + trim protocol-open to ≤150 lines
 - `2818f19` fix(pr-164): remove duplicate templates.md, empty facts-gathering; add memory index entries
+- `8073146` fix(WP-7): FMT delivery — .claude/styles propagation, manifest sync, smoke Test 6e
+- `cb8a1a6` fix(COL-06): communication-style-base.md — L1 → S1 (авторский слой)
+- `06b9d79` fix(WP-376): A52/A49/A50/A51 — template hygiene и agentigore sample
+- `c869a3c` fix(pull-on-touch): autostash вместо пропуска-на-грязном — тянет даже на dirty-репо
+- `5cd2c24` fix(day-open): уточнить guard и добавить backlink в templates.md
+- `158b31b` fix(backup): #172 cloud-scheduler stops clobbering exocortex/CLAUDE.md (#188)
+- `9725133` fix(notify): #169 DayPlan Telegram broken — resolve templates from .iwe-runtime + force UTF-8 (#187)
+- `4cf41d7` fix(day-close): #173 xargs false-FAIL in 9a + incorporate #180 facts-for-Haiku (#185)
+- `8e5c49e` fix: regenerate update-manifest.json for destructive-guard + check-trash hooks
+- `b02fd7b` fix(linux): regenerate update-manifest.json for systemd units + bootstrap
+- `599caa7` fix: установщик читал старый ключ каталога candidates вместо models (РП404)
 - `c7b92f4` fix(wp7): generate-manifest.sh skips [Unreleased], add verify-manifest.sh to excluded_paths
 - `e814373` fix(FMT): close manifest coverage gap (WP-7 MFC1-MFC3)
 - `d12febc` fix(manifest): register 4 new lazy-load files from PR #164/#166
@@ -196,6 +227,12 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - `df591ea` fix(dry-run-gate): make sentinel discovery session-agnostic (closes #59) (#60)
 - `bffd92c` fix(skill): quote pack-new description in SKILL.md frontmatter (#137)
 
+
+## [0.35.4] — 2026-06-15
+
+### Fixed
+
+- fix(WP-7): FMT delivery blockers от реального pilot update — доставка `setup/validate-template.sh` через `update-manifest.json`, hard-fail `update.sh` при неразрешённых конфликтах `CLAUDE.md`, coverage `scripts/tests/test_skill_promote.py` в манифесте.
 
 ## [0.35.3] — 2026-06-01
 

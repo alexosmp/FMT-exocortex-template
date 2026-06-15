@@ -1,15 +1,9 @@
 {
-  "version": "0.35.3",
+  "version": "0.35.4",
   "description": "Манифест платформенных файлов FMT-exocortex-template. Используется update.sh для доставки обновлений.",
   "files": [
     {
       "path": "AGENTS.md"
-    },
-    {
-      "path": "CHANGELOG.md"
-    },
-    {
-      "path": "CHANGELOG.md"
     },
     {
       "path": "CHANGELOG.md"
@@ -60,6 +54,9 @@
       "path": ".claude/hooks/extensions-gate.sh"
     },
     {
+      "path": ".claude/hooks/inject-code-style.sh"
+    },
+    {
       "path": ".claude/hooks/inject-communication-style.sh"
     },
     {
@@ -82,6 +79,9 @@
     },
     {
       "path": ".claude/hooks/protocol-stop-gate.sh"
+    },
+    {
+      "path": ".claude/hooks/pull-on-touch.sh"
     },
     {
       "path": ".claude/hooks/response-clarity-hook.sh"
@@ -178,6 +178,9 @@
     },
     {
       "path": ".claude/skills/day-open/SKILL.md"
+    },
+    {
+      "path": ".claude/skills/day-open/templates.md"
     },
     {
       "path": ".claude/skills/decompose/SKILL.md"
@@ -297,6 +300,12 @@
       "path": ".claude/skills/w-reflection/SKILL.md"
     },
     {
+      "path": ".claude/styles/p05-core.md"
+    },
+    {
+      "path": ".claude/styles/s0-core.md"
+    },
+    {
       "path": ".claude/sync-manifest.yaml"
     },
     {
@@ -394,6 +403,9 @@
     },
     {
       "path": "exocortex/hindsight/start.sh"
+    },
+    {
+      "path": "extensions/agentigore.sample"
     },
     {
       "path": "extensions/agent-inbox/README.md"
@@ -873,6 +885,9 @@
       "path": "setup.sh"
     },
     {
+      "path": "setup/validate-template.sh"
+    },
+    {
       "path": "shared/rubrics/form-089.yaml"
     },
     {
@@ -964,6 +979,7 @@
     "scripts/smoke-clean-env.sh",
     "scripts/staging-audit.sh",
     "scripts/style-check-post-run.sh",
+    "scripts/style-promote.sh",
     "scripts/sync-agent-instructions.sh",
     "scripts/sync-communication-style.py",
     "scripts/sync-communication-style.yaml.example",
@@ -973,6 +989,7 @@
     "scripts/test-route-task.sh",
     "scripts/tests/conftest.py",
     "scripts/tests/test_agent_dashboard.py",
+    "scripts/tests/test_skill_promote.py",
     "scripts/validate-fmt-scripts.sh",
     "scripts/validate-skill.sh",
     "scripts/verify-manifest.sh",

@@ -84,7 +84,7 @@ set -uo pipefail
 
 # Load unified environment: WORKSPACE_DIR, IWE_ROOT, IWE_SCRIPTS, etc.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../../.claude/lib/iwe-env-bootstrap.sh" || exit 1
+source "$SCRIPT_DIR/../.claude/lib/iwe-env-bootstrap.sh" || exit 1
 REPO_DIR=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
 [[ "$REPO_DIR" != "$IWE_ROOT"* ]] && exit 0
 REPO_NAME=$(basename "$REPO_DIR")
