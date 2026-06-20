@@ -64,7 +64,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 - `25056ef` feat(WP-5): iwe-bug-report executor→agent + update.sh Step 6f orphan detection
 - `1593f13` feat(WP-295): promote rule-engine.sh + generate-rules-registry.py to platform
-- `3a17360` feat(diagnose): promote diagnose-iwe v5.0 to platform (L1)
+- `3a17360` feat(diagnose): promote diagnose v5.0 to platform (L1)
 - `3491420` feat(day-close): ask pilot for tomorrow priorities and update priorities.yaml
 - `1651574` feat(skills): promote 6 top skills to FMT with advisory fixes (WP-422)
 - `bcdb0ed` feat(skills): promote skill-creator v0.3.2 + C6 audit + pg-start Verification
@@ -110,7 +110,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - `daeaa01` fix(manifest): exclude .backups/, add promoted skill files (artifactor + skill-creator)
 - `4d7c2f3` fix(skill-creator): remove /create-skill alias from triggers and description
 - `9bd0593` fix(update.sh): Windows SSL revocation flag detection via curl --help
-- `b1b45cd` fix(WP-7): strategist runner env fallback + diagnose-iwe YAML sync (#136 #122)
+- `b1b45cd` fix(WP-7): strategist runner env fallback + diagnose YAML sync (#136 #122)
 - `a823c51` fix(WP-7): setup/validate-template.sh delivery, CLAUDE.md conflict hard-fail, manifest coverage
 - `8073146` fix(WP-7): FMT delivery — .claude/styles propagation, manifest sync, smoke Test 6e
 - `cb8a1a6` fix(COL-06): communication-style-base.md — L1 → S1 (авторский слой)

@@ -84,9 +84,6 @@
       "path": ".claude/hooks/rule-engine.sh"
     },
     {
-      "path": ".claude/hooks/wakatime-heartbeat.sh"
-    },
-    {
       "path": ".claude/hooks/wp-gate-reminder.sh"
     },
     {
@@ -192,7 +189,7 @@
       "path": ".claude/skills/decompose/SKILL.md"
     },
     {
-      "path": ".claude/skills/diagnose-iwe/SKILL.md"
+      "path": ".claude/skills/diagnose/SKILL.md"
     },
     {
       "path": ".claude/skills/discovery-session/SKILL.md"
@@ -1000,7 +997,7 @@
     "scripts/day-open-smoke.sh",
     "scripts/fmt-critical-alert.sh",
     "scripts/generate-catalogs.py",
-    "scripts/generate-diagnose-iwe-skill.py",
+    "scripts/generate-diagnose-skill.py",
     "scripts/generate-executor-catalog.py",
     "scripts/generate-helper-catalog.py",
     "scripts/generate-skills-catalog.sh",

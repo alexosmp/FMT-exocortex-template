@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-generate-diagnose-iwe-skill.py
+generate-diagnose-skill.py
 
 SoT: shared/rubrics/form-089.yaml
 SKILL.md: содержит рубрики статически (в Шагах 2-4).
@@ -8,7 +8,7 @@ SKILL.md: содержит рубрики статически (в Шагах 2-
 присутствуют в SKILL.md (drift detection).
 
 Usage:
-  python scripts/generate-diagnose-iwe-skill.py --check  # verify sync, exit 1 if stale
+  python scripts/generate-diagnose-skill.py --check  # verify sync, exit 1 if stale
 """
 import argparse
 import pathlib
@@ -17,7 +17,7 @@ import yaml
 
 REPO_ROOT = pathlib.Path(__file__).parent.parent
 YAML_PATH = REPO_ROOT / "shared" / "rubrics" / "form-089.yaml"
-SKILL_PATH = REPO_ROOT / ".claude" / "skills" / "diagnose-iwe" / "SKILL.md"
+SKILL_PATH = REPO_ROOT / ".claude" / "skills" / "diagnose" / "SKILL.md"
 
 
 def check():
@@ -68,13 +68,13 @@ def check():
             missing.append(f"Formula missing: {formula}")
 
     if missing:
-        print("ERROR: diagnose-iwe/SKILL.md is stale.", file=sys.stderr)
+        print("ERROR: diagnose/SKILL.md is stale.", file=sys.stderr)
         for m in missing:
             print(f"  - {m}", file=sys.stderr)
         print("       Update SKILL.md to match shared/rubrics/form-089.yaml", file=sys.stderr)
         sys.exit(1)
 
-    print("OK: diagnose-iwe/SKILL.md is in sync with YAML.")
+    print("OK: diagnose/SKILL.md is in sync with YAML.")
 
 
 if __name__ == "__main__":

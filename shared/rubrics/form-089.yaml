@@ -1,6 +1,6 @@
 # FORM.089 §6.1 v5.0 — Рубрики диагностики ступени мастерства (WP-370)
-# Source of Truth для diagnose-iwe/SKILL.md
-# Изменения здесь требуют обновления SKILL.md; verify: python3 scripts/generate-diagnose-iwe-skill.py --check
+# Source of Truth для diagnose/SKILL.md
+# Изменения здесь требуют обновления SKILL.md; verify: python3 scripts/generate-diagnose-skill.py --check
 #
 # v5.0 changes (WP-370):
 # - cp.skl removed from Phase 1 slots (now derived: scores['cp.skl'] = scores['cp.rhy'])
