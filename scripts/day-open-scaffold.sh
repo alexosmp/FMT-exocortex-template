@@ -24,10 +24,14 @@
 
 set -uo pipefail
 
+# Load unified environment: WORKSPACE_DIR, IWE_ROOT, IWE_SCRIPTS, etc.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=/dev/null
 source "$SCRIPT_DIR/../.claude/lib/iwe-env-bootstrap.sh" || exit 1
-IWE="$IWE_ROOT"
+# Bootstrap exports IWE_ROOT, but the rest of this script uses $IWE. A clean caller
+# (launchd, or the pipeline calling us as a subprocess) does not export IWE, so under
+# `set -u` line ~31 tripped «IWE: unbound variable» and the scaffold aborted — which is
+# why the legacy prompt's "Шаг 0 scaffold" silently fell back to free-form synthesis.
+IWE="${IWE:-$IWE_ROOT}"
 DATE="${1:-$(date +%Y-%m-%d)}"
 CONFIG="$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/exocortex/day-rhythm-config.yaml"
 SERVER_MODE="${IWE_SERVER_MODE:-0}"  # WP-283: 1 = Linux server, Mac-only MCP недоступен
@@ -176,12 +180,51 @@ extract_strategy_context() {
   echo "не найден"
 }
 
+read_morning_priorities() {
+  local prio_file="$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/current/priorities.yaml"
+
+  if [ ! -f "$prio_file" ]; then
+    return 0
+  fi
+
+  # Stale check (>= 3 days)
+  local last_updated stale_warn=""
+  last_updated=$(grep "^last_updated:" "$prio_file" 2>/dev/null | sed 's/last_updated:[[:space:]]*//' | tr -d '"' | head -1)
+  if [ -n "$last_updated" ]; then
+    local today_epoch last_epoch diff_days
+    today_epoch=$(date +%s)
+    last_epoch=$(date -j -f "%Y-%m-%d" "$last_updated" +%s 2>/dev/null \
+      || date -d "$last_updated" +%s 2>/dev/null || echo 0)
+    if [ "$last_epoch" -gt 0 ]; then
+      diff_days=$(( (today_epoch - last_epoch) / 86400 ))
+      if [ "$diff_days" -ge 3 ]; then
+        stale_warn="⚠️ приоритеты устарели: обновлены $last_updated (${diff_days}д назад) — обнови priorities.yaml"
+      fi
+    fi
+  fi
+
+  local wps
+  wps=$(awk '
+    /^today:/ { found=1; next }
+    /^[^[:space:]]/ && found { exit }
+    found && /^[[:space:]]*-/ {
+      gsub(/^[[:space:]]*-[[:space:]]*/,"")
+      print "- "$0
+    }
+  ' "$prio_file" 2>/dev/null)
+
+  if [ -z "$wps" ]; then
+    return 0
+  fi
+
+  [ -n "$stale_warn" ] && echo "$stale_warn"
+  echo "$wps"
+}
+
 # --- Strategy_day guard (Ф6 WP-264) ---
 # Если сегодня strategy_day → не генерировать DayPlan (SKILL.md шаг 4).
 # Возвращает exit 2; extension обрабатывает этот код и выводит сообщение Claude.
 STRATEGY_DAY_NAME=$(read_yaml "day_open.strategy_day" || true)
-WEEK_CLOSE_DAY_NAME=$(read_yaml "day_open.week_close_day" || true)
-STRATEGY_DAY_NAME="${WEEK_CLOSE_DAY_NAME:-$STRATEGY_DAY_NAME}"
 case "${STRATEGY_DAY_NAME:-monday}" in
   monday)    STRATEGY_DOW=1 ;;
   tuesday)   STRATEGY_DOW=2 ;;
@@ -524,7 +567,7 @@ INCEOF
   if [ -f "$gate_log" ]; then
     local recent
     recent=$(awk -v d="$DATE" '$0 ~ d' "$gate_log" 2>/dev/null | wc -l | tr -d ' ')
-    echo "| gate_log | 🟢 | $recent записей за $DATE (Ф1 WP-264) |"
+    echo "| gate_log | 🟢 | $recent записей за $DATE |"
   else
     echo "| gate_log | 🟡 | $gate_log не найден |"
   fi
@@ -576,6 +619,25 @@ render_scout() {
     echo "> Нет отчёта на $DATE — Scout не запускался или ещё не закончил"
     echo "> **Статус ревью:** — (нет находок)"
   fi
+}
+
+# --- Section: Gate-метрики (WP-423 Ф6.4) ---
+render_gate_metrics() {
+  local script="$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/scripts/gate-metrics.sh"
+  local log="${HOME}/.iwe/gate-decisions.jsonl"
+  echo "<details>"
+  echo "<summary><b>Gate-метрики</b></summary>"
+  echo ""
+  if [ ! -f "$script" ]; then
+    echo "> ⚠️ Скрипт gate-metrics.sh не найден: \`$script\`"
+  elif [ ! -f "$log" ]; then
+    echo "> Лог gate-решений не найден: \`$log\`"
+    echo "> Запустите \`iwe-agent-dispatcher.py\` или \`overnight-auditor.sh\`, чтобы появились данные."
+  else
+    bash "$script" "$log" 2>/dev/null || echo "> ⚠️ gate-metrics.sh завершился с ошибкой"
+  fi
+  echo ""
+  echo "</details>"
 }
 
 # --- Section: KE-очередь (отчёты на разбор) ---
@@ -645,21 +707,20 @@ render_yesterday() {
 # --- Section: Compact Dashboard (WP-7 Block DOC) ---
 # Выводится в stdout ПОСЛЕ EOF-блока DayPlan через маркер ---COMPACT-DASHBOARD---
 # Читается агентом/пилотом как сводка дня; не входит в DayPlan-файл.
+# INVARIANT: скаффолд НЕ заполняет топ-7 РП — план ещё пуст (PENDING).
+# Топ-7 формирует day-open-llm-fill.py из готовой секции «План на сегодня»
+# (функция rebuild_compact_dashboard, WP-5 Ф 2026-06-11 П1).
 render_compact_dashboard() {
   echo ""
   echo "---COMPACT-DASHBOARD---"
   echo "## Compact Dashboard — $DAY_NUM $MONTH_RU $YEAR ($DOW_RU)"
   echo ""
 
-  # Топ РП из sweep (первые 7)
-  local sweep_rows
-  sweep_rows=$(bash "$IWE/scripts/active-wp-sweep.sh" "$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/inbox" "$IWE" 2>/dev/null \
-    | grep -E '^\| \*\*WP-' | head -7)
-  if [[ -n "$sweep_rows" ]]; then
-    echo "**Активные РП (top-7):**"
-    echo "$sweep_rows" | sed 's/| нет ([0-9]*д)/| нет активности/'
-    echo ""
-  fi
+  # Placeholder для топ-7 — будет заменён LLM-fill после наполнения плана.
+  # Если видишь эту строку в итоговом файле — значит LLM-fill не отработал
+  # или rebuild_compact_dashboard не сработала (bug-2026-06-11).
+  echo "**Сегодня (топ-7 по приоритету):** <!-- filled by day-open-llm-fill.py from 'План на сегодня' -->"
+  echo ""
 
   # Дедлайны из календаря (если preflight OK)
   if [[ "$CALENDAR_PF" == "ok" ]]; then
@@ -691,6 +752,7 @@ SWEEP_WP_LIST=$(bash "$IWE/scripts/active-wp-sweep.sh" "$IWE/${IWE_GOVERNANCE_RE
 # --- Deterministic context injection (WP-7 DAP) ---
 DAY_CLOSE_CARRY_OVER=$(extract_day_close_carry_over "$YDAY" | sed 's/^/  /')
 STRATEGY_CONTEXT=$(extract_strategy_context "$WEEK_NUM" | sed 's/^/  /')
+MORNING_PRIORITIES=$(read_morning_priorities | sed 's/^/  /')
 
 # --- Output ---
 cat <<EOF
@@ -705,39 +767,18 @@ generated_by: day-open-scaffold.sh (WP-264 Ф2)
 
 # Day Plan: $DAY_NUM $MONTH_RU $YEAR ($DOW_RU)
 
+<!-- СРОЧНОЕ (ТВС=С): вывести ТОЛЬКО при 🔴 (упавший smoke / сломанная интеграция / EMERGENCY в priorities.yaml / заблокированный конвейер). В зелёный день — «нет срочного». -->
 <details>
-<summary><b>Активные РП (WP-283 Шаг E)</b></summary>
+<summary><b>🚨 Срочное</b></summary>
 
-$(bash "$IWE/scripts/active-wp-sweep.sh" "$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/inbox" "$IWE" 2>/dev/null || echo "<!-- active-wp-sweep: ошибка запуска -->")
-
-</details>
-
-<details open>
-<summary><b>План на сегодня</b></summary>
-
-<!-- PENDING: today_plan — синтез таблицы из WeekPlan W$WEEK_NUM + JSON-фактов WP. Применить mandatory_daily_wps + daily_checkpoint_wps из day-rhythm-config.yaml. KE-строка: bash $IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/scripts/ke-queue-stats.sh --dayplan-row (реальный бюджет, не литерал «1h»).
-Active WPs to include (из sweep + WeekPlan union): $SWEEP_WP_LIST
--->
-
-**Стратегические приоритеты (из Strategy Session W${WEEK_NUM}):**
-${STRATEGY_CONTEXT:-не найдены}
-
-| 🚦 | # | РП | h | Статус | Результат |
-|----|---|-----|---|--------|-----------|
-| ⚫ | N | **Саморазвитие** — [тема] | 1-2 | pending | — |
-| 🔴 | NNN | **<!-- PENDING -->** | X | pending | — |
-
-**Бюджет дня:** <!-- PENDING: budget — посчитать после плана, формат см. templates-dayplan.md (бюджет РП всего / физ / мультипликатор). -->
-
-**Mandatory check:** WP-7 (техдолг бота, ≥30 мин) + ≥1 контентный РП — <!-- PENDING: проверить наличие в плане -->
-
-**Carry-over из Day Close вчера ($YDAY):**
-${DAY_CLOSE_CARRY_OVER:-нет (Day Close не найден)}
+<!-- PENDING: urgent — если в «Здоровье платформы» есть 🔴 ИЛИ в priorities.yaml пометка EMERGENCY: таблица | Что | Система | Действие | ETA |. Иначе одна строка: «— нет срочного (зелёный день)». -->
 
 </details>
 
 <details>
-<summary><b>Саморазвитие (шаг 3)</b></summary>
+<summary><b>Саморазвитие</b></summary>
+
+- **Изучи персональное руководство:** [personal-guide](https://github.com/TserenTserenov/personal-guide)
 
 <!-- PENDING: self_dev — прочитать drafts/draft-list.md и выбрать активный D-NNN. Обязательно:
   1. Номер черновика и тема: [D-NNN](drafts/D-NNN-тема.md)
@@ -752,20 +793,72 @@ ${DAY_CLOSE_CARRY_OVER:-нет (Day Close не найден)}
 
 </details>
 
+<details open>
+<summary><b>План на сегодня</b></summary>
+
+<!-- PENDING: today_plan — синтез таблицы плана дня.
+
+АВТОРИТЕТНЫЙ ИСТОЧНИК ПОРЯДКА: «Утренние приоритеты (priorities.yaml)» ниже.
+ПРАВИЛО: КАЖДЫЙ РП из priorities.yaml ОБЯЗАН быть в таблице — в том же порядке (первый = самая верхняя строка).
+ИСКЛЮЧЕНИЕ: РП можно не включать только если его status в inbox/WP-NNN.md явно равен 'done' или 'closed' (или он помечен ✅ в WP-REGISTRY с зачёркиванием). Перед исключением — проверить.
+ЛОВУШКА: «Ф1-Ф3 ✅ закрыто вчера» НЕ означает, что весь РП закрыт. Фаза ≠ РП. Проверить status в inbox/WP-NNN.md.
+ЗАПРЕЩЕНО: включать в план РП, закрытые вчера (есть в «закрыто вчера» + ✅ в REGISTRY). Например, WP-362 закрыт — его нет в плане.
+
+После priorities.yaml — дополнить из carry-over и SWEEP_WP_LIST теми РП, которых нет в priorities.yaml и которые ещё open.
+Применить mandatory_daily_wps + daily_checkpoint_wps из day-rhythm-config.yaml.
+KE-строка: bash $IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/scripts/ke-queue-stats.sh --dayplan-row (реальный бюджет, не литерал «1h»).
+Active WPs to include (из sweep + WeekPlan union): $SWEEP_WP_LIST
+-->
+
+**Утренние приоритеты (priorities.yaml):**
+${MORNING_PRIORITIES:-  (не задано — обнови current/priorities.yaml)}
+
+**Стратегические приоритеты (из Strategy Session W${WEEK_NUM}):**
+${STRATEGY_CONTEXT:-не найдены}
+
+| 🚦 | ТВС | # | РП | h | Статус |
+|----|-----|---|-----|---|--------|
+| ⚫ | В | N | **Саморазвитие** — [тема] | 1-2 | pending |
+| 🔴 | С | NNN | **<!-- PENDING -->** | X | pending |
+
+> ТВС: **В** = Важное (развитие / критичное для R1-R6) · **Т** = Текущее (плановая работа) · **С** = Срочное (угроза конвейеру, дублируется в шапке 🚨)
+
+**Бюджет дня:** <!-- PENDING: budget — посчитать после плана, формат см. templates-dayplan.md (бюджет РП всего / физ / мультипликатор). -->
+
+**Mandatory check:** WP-7 (техдолг бота, ≥30 мин) + ≥1 контентный РП — <!-- PENDING: проверить наличие в плане -->
+
+**Carry-over из Day Close вчера ($YDAY):**
+${DAY_CLOSE_CARRY_OVER:-нет (Day Close не найден)}
+
+</details>
+
+<details>
+<summary><b>Разбор заметок</b></summary>
+
+<!-- PENDING: notes_review — категоризация fleeting-notes.md (НЭП/Задача/Черновик/Знание/Шум) или carry-over из вчерашнего Note-Review коммита. Каждая заметка — markdown-ссылка с якорем на заголовок: [«текст заметки»](inbox/fleeting-notes.md#якорь-заголовка). Якорь = текст заголовка в нижнем регистре, пробелы → дефисы, без эмодзи. См. SKILL.md шаг 1c. -->
+
+| Заметка | Тип | Предложение | ✅ |
+|---------|-----|-------------|---|
+| [<!-- PENDING -->](../inbox/fleeting-notes.md#якорь-заметки) | — | — | [ ] |
+
+</details>
+
 <details>
 <summary><b>Календарь ($DAY_NUM $MONTH_RU)</b></summary>
 
-$(if [[ "$SERVER_MODE" == "1" ]]; then
-  bash "$IWE/scripts/server-calendar.sh" "$DATE" "$CONFIG" 2>/dev/null || echo "📅 **Календарь ($DAY_NUM $MONTH_RU):** ⚠️ PENDING — server-calendar.sh завершился с ошибкой"
-else
-  echo "<!-- PENDING: calendar — mcp__ext-google-calendar__list-events для calendar_ids из day-rhythm-config.yaml. Фильтр 09:00-19:00, private пропустить. -->"
-  echo ""
-  echo "| Время | Событие | Длит. | Связь с РП |"
-  echo "|-------|---------|-------|------------|"
-  echo "| HH:MM | <!-- PENDING --> | Xh | <!-- PENDING --> |"
-  echo ""
-  echo "⏱ Свободных блоков ≥1h: <!-- PENDING -->"
-fi)
+<!-- PENDING: calendar — вызвать mcp__ext-google-calendar__list-events для calendar_ids:
+  - Календарь Церен: i0f6eu8fnpt912c38glhgokfkg@group.calendar.google.com
+  - IWE Platform Ops: 0b141e8bb8367d75b444ae2595ff9d6575095aeaf04da1969fb716300e94bd53@group.calendar.google.com
+  - primary: tserenov72@gmail.com
+  timeMin=$DATE 00:00 МСК, timeMax=$DATE 23:59 МСК.
+  Показать ВСЕ события дня, включая платформенные напоминания из IWE Platform Ops.
+  Формат: таблица + строка свободных блоков ≥1h. -->
+
+| Время (МСК) | Событие | Длит. | Связь с РП |
+|-------------|---------|-------|------------|
+| <!-- PENDING --> | <!-- PENDING --> | — | — |
+
+⏱ Свободных блоков ≥1h: <!-- PENDING -->
 
 </details>
 
@@ -792,7 +885,7 @@ $(render_repo_activity)
 <summary><b>Наработки агентов</b></summary>
 
 <details>
-<summary><b>Наработки Scout (разбор)</b></summary>
+<summary><b>Ночные отчёты</b></summary>
 
 $(render_scout)
 
@@ -804,6 +897,8 @@ $(render_scout)
 $(render_ke_candidates)
 
 </details>
+
+$(render_gate_metrics)
 
 </details>
 
@@ -818,17 +913,6 @@ $(render_ke_candidates)
 
 </details>
 
-<details>
-<summary><b>Разбор заметок</b></summary>
-
-<!-- PENDING: notes_review — категоризация fleeting-notes.md (НЭП/Задача/Черновик/Знание/Шум) или carry-over из вчерашнего Note-Review коммита. Каждая заметка — markdown-ссылка с якорем на заголовок: [«текст заметки»](inbox/fleeting-notes.md#якорь-заголовка). Якорь = текст заголовка в нижнем регистре, пробелы → дефисы, без эмодзи. См. SKILL.md шаг 1c. -->
-
-| Заметка | Тип | Предложение | ✅ |
-|---------|-----|-------------|---|
-| [<!-- PENDING -->](../inbox/fleeting-notes.md#якорь-заметки) | — | — | [ ] |
-
-</details>
-
 $(render_world)
 
 <details>
@@ -839,6 +923,13 @@ $(render_world)
 **Горлышко недели (SC-first, $DATE):** <!-- PENDING -->
 
 <!-- PENDING: week_context — фокус недели + текущий бюджет/мультипликатор + ТОС. Источник: ${IWE_GOVERNANCE_REPO:-DS-strategy}/current/WeekPlan W$WEEK_NUM*.md. -->
+
+</details>
+
+<details>
+<summary><b>Активные РП</b></summary>
+
+$(bash "$IWE/scripts/active-wp-sweep.sh" "$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/inbox" "$IWE" 2>/dev/null || echo "<!-- active-wp-sweep: ошибка запуска -->")
 
 </details>
 
@@ -873,5 +964,3 @@ $(render_video)
 
 *Создан: $DATE (Day Open / day-open-scaffold.sh WP-264 Ф2)*
 EOF
-
-render_compact_dashboard

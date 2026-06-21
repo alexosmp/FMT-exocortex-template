@@ -65,7 +65,8 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 
 
-## [Unreleased] — обновлено 2026-06-20
+
+## [Unreleased] — обновлено 2026-06-21
 
 ### Added
 
@@ -90,6 +91,9 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - `5e21531` feat(WP-7/SP1): refactor skill-promote.sh — safety, validation, tests
 - `53cd985` feat(day-open): add ТВС labeling step to skill template (§6b2)
 - `36febfd` feat(strategy): модель ТВС в шаблон (стратегирование + ОРЗ)
+- `673474d` feat(WP-388): проекция базы стиля — 4 новых элемента регистра (зеркало L0)
+- `dd117c5` feat(styles): WP-412 Ф11 — дисциплина языковых стилей в шаблон IWE
+- `83434ea` feat: promote pull-on-touch.sh — детерминированный Pull-on-Touch (CLAUDE.md §2 п.5)
 
 ### Changed
 
@@ -105,6 +109,8 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- `d8c8568` fix(validate-template): skip wakatime-heartbeat.sh in orphan hook check
+- `5917dd6` fix: pathspec enforcement in 6 finalizing skills + lesson-close + skill-promote
 - `b7d1c4c` fix(diagnose): remove duplicate /diagnose trigger entries after rename
 - `ac815a0` fix(skill-promote): GNU-first stat for cross-platform permission preservation
 - `f10e03e` fix(skill-promote): cross-platform cp — copy CONTENTS, not nested dir
@@ -130,6 +136,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - `8073146` fix(WP-7): FMT delivery — .claude/styles propagation, manifest sync, smoke Test 6e
 - `cb8a1a6` fix(COL-06): communication-style-base.md — L1 → S1 (авторский слой)
 - `06b9d79` fix(WP-376): A52/A49/A50/A51 — template hygiene и agentigore sample
+- `c869a3c` fix(pull-on-touch): autostash вместо пропуска-на-грязном — тянет даже на dirty-репо
 
 
 ## [0.35.4] — 2026-06-15
