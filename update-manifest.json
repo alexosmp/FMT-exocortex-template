@@ -57,6 +57,9 @@
       "path": ".claude/hooks/inject-fault-profile.sh"
     },
     {
+      "path": ".claude/hooks/lazy-context-loader.sh"
+    },
+    {
       "path": ".claude/hooks/memory-exocortex-sync.sh"
     },
     {
@@ -180,10 +183,16 @@
       "path": ".claude/skills/day-close/SKILL.md"
     },
     {
+      "path": ".claude/skills/day-close/day-close-details.md"
+    },
+    {
       "path": ".claude/skills/day-close/day-close/SKILL.md"
     },
     {
       "path": ".claude/skills/day-open/SKILL.md"
+    },
+    {
+      "path": ".claude/skills/day-open/day-open-details.md"
     },
     {
       "path": ".claude/skills/day-open/templates.md"

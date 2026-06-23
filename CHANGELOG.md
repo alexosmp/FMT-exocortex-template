@@ -73,6 +73,8 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- feat(WP-16): slim day-open/close SKILL.md — 226→104 (-54%) and 263→126 (-52%) lines; verbose algorithms extracted to `*-details.md` lazy files
+- feat(WP-16): `lazy-context-loader.sh` hook — UserPromptSubmit, injects warm memory by keyword trigger (security-audit, systemd-scheduler, FPF distinctions)
 - `58fc4ac` feat(WP-7/SP1): promote skill local-llm to platform (L1)
 - `55851f9` feat(day-open): станок самодостаточен без bootstrap (ре-промоция)
 - `affae73` feat(day-open): промоция ТВС-структуры скаффолда + дефолт IWE
