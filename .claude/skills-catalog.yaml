@@ -2,7 +2,7 @@
 # see DP.SC.153
 # НЕ редактировать вручную — перегенерировать через generate-skills-catalog.sh
 #
-generated: 2026-06-26T16:31:34Z
+generated: 2026-06-27T03:49:24Z
 skills_dir: .claude/skills
 
 skills:
@@ -29,6 +29,7 @@ skills:
         - /apply-captures
     depends_on: []
     invoked_by:
+    - protocol-close
     - ke
     - apply-captures
   - id: archgate
@@ -58,6 +59,7 @@ skills:
         - /artifactor
     depends_on: []
     invoked_by:
+    - protocol-open
     - artifactor
   - id: audit-docs
     name: "audit-docs"
@@ -132,6 +134,7 @@ skills:
         - /consent
     depends_on: []
     invoked_by:
+    - protocol-dt-integration
     - consent
   - id: day-close
     name: "day-close"
@@ -144,6 +147,7 @@ skills:
         - /day-close
     depends_on: []
     invoked_by:
+    - protocol-close
     - run-protocol
     - extend
     - day-close
@@ -159,6 +163,7 @@ skills:
         - /day-open
     depends_on: []
     invoked_by:
+    - protocol-open
     - CLAUDE.md
     - run-protocol
     - extend
@@ -298,6 +303,7 @@ skills:
       slash: []
     depends_on: []
     invoked_by:
+    - protocol-close
     - ke
     - pack-new
     - apply-captures
@@ -349,6 +355,7 @@ skills:
         - /month-close
     depends_on: []
     invoked_by:
+    - protocol-month-close
     - CLAUDE.md
     - month-close
   - id: org-dev
@@ -462,6 +469,7 @@ skills:
       slash: []
     depends_on: []
     invoked_by:
+    - protocol-month-close
     - CLAUDE.md
     - day-close
     - day-close
@@ -524,6 +532,7 @@ skills:
         - /transcribe
     depends_on: []
     invoked_by:
+    - protocol-work
     - transcribe
   - id: vdv
     name: "vdv"
@@ -551,6 +560,8 @@ skills:
         - /verify
     depends_on: []
     invoked_by:
+    - protocol-work
+    - protocol-close
     - run-protocol
     - peer-conversation
     - day-close
@@ -594,6 +605,7 @@ skills:
         - /week-close
     depends_on: []
     invoked_by:
+    - protocol-close
     - run-protocol
     - extend
     - week-close-pilot
